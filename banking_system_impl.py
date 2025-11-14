@@ -89,7 +89,7 @@ class BankingSystemImpl(BankingSystem):
 
         return name
 
-    def get_payment_status(self, timestamp: int, account_id: str, payment: str) -> str | None:        
+    def get_payment_status(self, timestamp: int, account_id: str, payment: str) -> str | None:
         self._process_cashbacks(timestamp)
         if account_id not in self.payments or payment not in self.payments[account_id]:
             return None
