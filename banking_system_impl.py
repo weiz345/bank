@@ -1,4 +1,5 @@
 from banking_system import BankingSystem
+import heapq # As we were told in pset 3, question 2.1, Python provides a min heap implementation in the `heapq` class 
 
 
 class BankingSystemImpl(BankingSystem):
@@ -9,14 +10,23 @@ class BankingSystemImpl(BankingSystem):
         self.payment_counter = 0
         self.merged_time = {}
         self.balance_history = {}
+        self.cashback = [] # priority queue (min heap)
 
     def _process_cashbacks(self, timestamp: int):
-        for acc, acc_payments in self.payments.items():
-            for name, info in acc_payments.items():
-                if info["status"] == "IN_PROGRESS" and info["refund_ts"] <= timestamp:
+        while self.cashback:
+            closest_refund_ts = self.cashback[0][0] # the next cashback due 
+            if closest_refund_ts > timestamp:
+                break # not yet time for a refund 
+
+            refund_ts, acc, name = heapq.heappop(self.cashback) # pop and return the smallest item from the heap
+            acc_payments = self.payments.get(acc)
+            if acc_payments:
+                info = acc_payments.get(name)
+
+                if info["status"] == "IN_PROGRESS" and refund_ts <= timestamp:
                     if acc in self.balances:
                         self.balances[acc] += info["cashback"]
-                        self.balance_history[acc].append((info["refund_ts"], self.balances[acc]))
+                        self.balance_history[acc].append((refund_ts, self.balances[acc]))
                     info["status"] = "CASHBACK_RECEIVED"
 
     def create_account(self, timestamp: int, account_id: str) -> bool:
@@ -72,6 +82,11 @@ class BankingSystemImpl(BankingSystem):
             "cashback": cashback,
             "status": "IN_PROGRESS",
         }
+
+        # push tuple onto the heap. Note that tuples are compared element-by-element from left to right,
+        # i.e., our min heap will by sorted by `refund_ts` values 
+        heapq.heappush(self.cashback, (refund_ts, account_id, name))
+
         return name
 
     def get_payment_status(self, timestamp: int, account_id: str, payment: str) -> str | None:
@@ -104,6 +119,16 @@ class BankingSystemImpl(BankingSystem):
         del self.balances[a2]
         del self.outgoing[a2]
         del self.payments[a2]
+
+        # update the min heap such that cashback entries from a2 now go to a1 
+        merged_heap = [] 
+        for refund_ts, acc, name in self.cashback:
+            if acc == a2:
+                acc = a1 
+            merged_heap.append((refund_ts, acc, name))
+        heapq.heapify(merged_heap) # transform the list into a min-heap (linear time) 
+        self.cashback = merged_heap 
+
 
         return True
 
