@@ -1,5 +1,5 @@
 from banking_system import BankingSystem
-import heapq # As we were told in pset 3, question 2.1, Python provides a min heap implementation in the `heapq` class 
+from collections import deque 
 
 
 class BankingSystemImpl(BankingSystem):
@@ -10,20 +10,16 @@ class BankingSystemImpl(BankingSystem):
         self.payment_counter = 0
         self.merged_time = {}
         self.balance_history = {}
-        self.cashback = [] # priority queue (min heap)
+        self.cashback = deque()
 
     def _process_cashbacks(self, timestamp: int):
-        while self.cashback:
-            closest_refund_ts = self.cashback[0][0] # the next cashback due 
-            if closest_refund_ts > timestamp:
-                break # not yet time for a refund 
-
-            refund_ts, acc, name = heapq.heappop(self.cashback) # pop and return the smallest item from the heap
+        while self.cashback and self.cashback[0][0] <= timestamp:
+            refund_ts, acc, name = self.cashback.popleft() # pop from the front of the queue 
             acc_payments = self.payments.get(acc)
             if acc_payments:
                 info = acc_payments.get(name)
 
-                if info["status"] == "IN_PROGRESS" and refund_ts <= timestamp:
+                if info["status"] == "IN_PROGRESS":
                     if acc in self.balances:
                         self.balances[acc] += info["cashback"]
                         self.balance_history[acc].append((refund_ts, self.balances[acc]))
@@ -83,9 +79,8 @@ class BankingSystemImpl(BankingSystem):
             "status": "IN_PROGRESS",
         }
 
-        # push tuple onto the heap. Note that tuples are compared element-by-element from left to right,
-        # i.e., our min heap will by sorted by `refund_ts` values 
-        heapq.heappush(self.cashback, (refund_ts, account_id, name))
+        # push tuple onto the deque (note that tuples are compared element-by-element from left to right)
+        self.cashback.append((refund_ts, account_id, name))
 
         return name
 
@@ -120,14 +115,13 @@ class BankingSystemImpl(BankingSystem):
         del self.outgoing[a2]
         del self.payments[a2]
 
-        # update the min heap such that cashback entries from a2 now go to a1 
-        merged_heap = [] 
+        # update the deque such that cashback entries from a2 now go to a1 
+        new_deque = deque()
         for refund_ts, acc, name in self.cashback:
             if acc == a2:
                 acc = a1 
-            merged_heap.append((refund_ts, acc, name))
-        heapq.heapify(merged_heap) # transform the list into a min-heap (linear time) 
-        self.cashback = merged_heap 
+            new_deque.append((refund_ts, acc, name))
+        self.cashback = new_deque
 
 
         return True
