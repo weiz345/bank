@@ -141,11 +141,22 @@ class BankingSystemImpl(BankingSystem):
         if not history or time_at < history[0][0]:
             return None
 
+        # binary search 
+        left = 0
+        right = len(history) - 1
         bal = None
-        for ts, b in history:
-            if ts <= time_at:
-                bal = b
-            else:
-                break
-        return bal
 
+        while left <= right:
+            mid = (left+right) // 2
+            ts, b = history[mid]
+
+            if ts == time_at:
+                return b 
+            elif ts < time_at:
+                bal = b
+                left = mid+1
+            else:
+                right = mid-1
+        return bal
+    
+  
