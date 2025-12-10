@@ -22,7 +22,7 @@ class BankingSystemImpl(BankingSystem):
                 if info["status"] == "IN_PROGRESS":
                     if acc in self.balances:
                         self.balances[acc] += info["cashback"]
-                        self.balance_history[acc].append((refund_ts, self.balances[acc]))
+                        self.balance_history[acc].append((info["refund_ts"], self.balances[acc]))
                     info["status"] = "CASHBACK_RECEIVED"
 
     def create_account(self, timestamp: int, account_id: str) -> bool:
