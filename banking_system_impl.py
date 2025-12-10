@@ -1,4 +1,5 @@
 from banking_system import BankingSystem
+from collections import deque 
 
 
 class BankingSystemImpl(BankingSystem):
@@ -9,11 +10,16 @@ class BankingSystemImpl(BankingSystem):
         self.payment_counter = 0
         self.merged_time = {}
         self.balance_history = {}
+        self.cashback = deque()
 
     def _process_cashbacks(self, timestamp: int):
-        for acc, acc_payments in self.payments.items():
-            for name, info in acc_payments.items():
-                if info["status"] == "IN_PROGRESS" and info["refund_ts"] <= timestamp:
+        while self.cashback and self.cashback[0][0] <= timestamp:
+            refund_ts, acc, name = self.cashback.popleft() # pop from the front of the queue 
+            acc_payments = self.payments.get(acc)
+            if acc_payments:
+                info = acc_payments.get(name)
+
+                if info["status"] == "IN_PROGRESS":
                     if acc in self.balances:
                         self.balances[acc] += info["cashback"]
                         self.balance_history[acc].append((info["refund_ts"], self.balances[acc]))
@@ -72,6 +78,10 @@ class BankingSystemImpl(BankingSystem):
             "cashback": cashback,
             "status": "IN_PROGRESS",
         }
+
+        # push tuple onto the deque (note that tuples are compared element-by-element from left to right)
+        self.cashback.append((refund_ts, account_id, name))
+
         return name
 
     def get_payment_status(self, timestamp: int, account_id: str, payment: str) -> str | None:
@@ -105,6 +115,15 @@ class BankingSystemImpl(BankingSystem):
         del self.outgoing[a2]
         del self.payments[a2]
 
+        # update the deque such that cashback entries from a2 now go to a1 
+        new_deque = deque()
+        for refund_ts, acc, name in self.cashback:
+            if acc == a2:
+                acc = a1 
+            new_deque.append((refund_ts, acc, name))
+        self.cashback = new_deque
+
+
         return True
 
 
@@ -122,11 +141,22 @@ class BankingSystemImpl(BankingSystem):
         if not history or time_at < history[0][0]:
             return None
 
+        # binary search 
+        left = 0
+        right = len(history) - 1
         bal = None
-        for ts, b in history:
-            if ts <= time_at:
-                bal = b
-            else:
-                break
-        return bal
 
+        while left <= right:
+            mid = (left+right) // 2
+            ts, b = history[mid]
+
+            if ts == time_at:
+                return b 
+            elif ts < time_at:
+                bal = b
+                left = mid+1
+            else:
+                right = mid-1
+        return bal
+    
+  
