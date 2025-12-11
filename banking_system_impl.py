@@ -253,7 +253,7 @@ class BankingSystemImpl(BankingSystem):
         del self.balances[a2]
         del self.outgoing[a2]
         del self.payments[a2]
-
+        
         # update the deque such that cashback entries from a2 now go to a1 
         new_deque = deque()
         for refund_ts, acc, name in self.cashback:
@@ -261,7 +261,7 @@ class BankingSystemImpl(BankingSystem):
                 acc = a1 
             new_deque.append((refund_ts, acc, name))
         self.cashback = new_deque
-
+        self._insert_into_sorted(a1)
 
         return True
 
