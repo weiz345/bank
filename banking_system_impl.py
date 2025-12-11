@@ -1,6 +1,6 @@
 from banking_system import BankingSystem
 from collections import deque 
-
+import bisect
 
 class BankingSystemImpl(BankingSystem):
     '''
@@ -37,6 +37,12 @@ class BankingSystemImpl(BankingSystem):
                         self.balance_history[acc].append((info["refund_ts"], self.balances[acc]))
                     info["status"] = "CASHBACK_RECEIVED"
     def _remove_from_sorted(self, acc: str):
+        '''
+        Remove an account's outgoing spending entry from the sorted structure
+
+        :param acc: Account identifier whose entry should be removed
+        :type acc: str
+        '''
         key = self.outgoing_key_map.pop(acc, None)
         if key is None:
             return
@@ -45,11 +51,23 @@ class BankingSystemImpl(BankingSystem):
             self.sorted_outgoing.pop(idx)
 
     def _insert_into_sorted(self, acc: str):
+        '''
+        Insert or reinsert an account into the sorted outgoing spending list
+
+        :param acc: Account identifier to be inserted
+        :type acc: str
+        '''
         key = (-self.outgoing[acc], acc)
         bisect.insort(self.sorted_outgoing, key)
         self.outgoing_key_map[acc] = key
 
     def _update_sorted_outgoing(self, acc: str):
+        '''
+        Update an account’s outgoing spending ranking after any spending change
+        
+        :param acc: Account identifier whose outgoing spending was updated
+        :type acc: str
+        '''
         if acc not in self.outgoing:
             self._remove_from_sorted(acc)
             return
